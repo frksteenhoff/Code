@@ -108,9 +108,11 @@ class Alley{
 
 class Barrier {
 
-	Semaphore activeCars = new Semaphore(8);	// Semaphore indicating whether a group of cars can enter the alley.
-	Semaphore mutex = new Semaphore(1);
-	Semaphore barrier = new Semaphore(0);			// Semaphore to prevent access to critical section	
+	Semaphore activeCars = new Semaphore(8);		// Semaphore indicating whether a group of cars can enter the alley.
+	Semaphore mutex = new Semaphore(1);				// Semaphore to prevent access to critical section
+	Semaphore barrier = new Semaphore(0);			// Turnstile
+	Semaphore barrier2 = new Semaphore(0);			// Turnstile
+	int cars = 8;
 	int count = 0;
 	
 	   public void sync(Pos pos) {    // Wait for others to arrive (if barrier active)
@@ -119,8 +121,29 @@ class Barrier {
 		    
 	   try{ mutex.P();} catch (InterruptedException e) {}
 		 count = count + 1;
+		 
+		 if(count == cars){
+			 try{ barrier2.P();} catch (InterruptedException e) {}
+			 barrier.V();
+		 }
 		 mutex.V();
+	   
+		 try{ barrier.P();} catch (InterruptedException e) {}
+		 barrier.V();
+		 
+		 //Critical point
+		 try{ mutex.P();} catch (InterruptedException e) {}
+		 count = count - 1;
+		 if(count == 0){
+			 try{ barrier.P();} catch (InterruptedException e) {}
+			 barrier2.V();
+		mutex.V();
+		
+		try{ barrier2.P();} catch (InterruptedException e) {}
+		barrier2.V();
+		 }
 	   }
+	   
 	   
 	   public void on() {  }    // Activate barrier
 	   
@@ -147,6 +170,7 @@ class Car extends Thread {
 	Pos newpos;                      // New position to go to
 	Semaphore[][] semaphores;        // Arrays of semaphores to keep track of 'legal' positions
 	Alley alley;					 // the alley in which the cars pass through
+	Barrier barrier;
 
 	public Car(int no, CarDisplayI cd, Gate g, Semaphore[][] semaphores, Alley alley) {
 
@@ -285,6 +309,7 @@ public class CarControl_step3 implements CarControlI{
 	Gate[] gate;              						  // Gates
 	Semaphore[][] semaphores = new Semaphore[12][11]; // Array of semaphores to keep track of cars
 	Alley alley = new Alley();
+	Barrier barrier = new Barrier();
 
 	public CarControl_step3(CarDisplayI cd) {
 
