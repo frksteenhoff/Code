@@ -108,48 +108,48 @@ class Alley{
 
 class Barrier {
 
+	// Two-phase barrier
+	// Method from The Little Book Of Semaphores, B. Downey, Allan
+
 	Semaphore activeCars = new Semaphore(8);		// Semaphore indicating whether a group of cars can enter the alley.
-	Semaphore mutex = new Semaphore(1);				// Semaphore to prevent access to critical section
+	Semaphore mutex = new Semaphore(1);				// Semaphore to prevent concurrent access to critical section
 	Semaphore barrier = new Semaphore(0);			// Turnstile
 	Semaphore barrier2 = new Semaphore(0);			// Turnstile
 	int cars = 8;
 	int count = 0;
-	
-	   public void sync(Pos pos) {    // Wait for others to arrive (if barrier active)
-		   // At barrier: stop cars and count (once per car!)
-		   // After rendez-vous, let cars pass, reactivate the barrier
-		    
-	   try{ mutex.P();} catch (InterruptedException e) {}
-		 count = count + 1;
-		 
-		 if(count == cars){
-			 try{ barrier2.P();} catch (InterruptedException e) {}
-			 barrier.V();
-		 }
-		 mutex.V();
-	   
-		 try{ barrier.P();} catch (InterruptedException e) {}
-		 barrier.V();
-		 
-		 //Critical point
-		 try{ mutex.P();} catch (InterruptedException e) {}
-		 count = count - 1;
-		 if(count == 0){
-			 try{ barrier.P();} catch (InterruptedException e) {}
-			 barrier2.V();
-		mutex.V();
-		
-		try{ barrier2.P();} catch (InterruptedException e) {}
-		barrier2.V();
-		 }
-	   }
-	   
-	   
-	   public void on() {  }    // Activate barrier
-	   
-	   public void off() {  }   // Deactivate barrier 
 
+	public void sync(Pos pos) {    // Wait for others to arrive (if barrier active)
+
+		try{ mutex.P();} catch (InterruptedException e) {}
+		count = count + 1;
+
+		if(count == cars){
+			try{ barrier2.P();} catch (InterruptedException e) {}
+			barrier.V();
+		}
+		mutex.V();
+
+		try{ barrier.P();} catch (InterruptedException e) {}
+		barrier.V();
+
+		//Critical point
+		try{ mutex.P();} catch (InterruptedException e) {}
+		count = count - 1;
+		if(count == 0){
+			try{ barrier.P();} catch (InterruptedException e) {}
+			barrier2.V();
+			mutex.V();
+
+			try{ barrier2.P();} catch (InterruptedException e) {}
+			barrier2.V();
+		}
 	}
+
+	public void on() {  }    // Activate barrier
+
+	public void off() {  }   // Deactivate barrier 
+
+}
 
 
 class Car extends Thread {
@@ -252,6 +252,23 @@ class Car extends Thread {
 		return false;
 	}
 
+	boolean atBarrier(Pos pos){
+		Pos pos1 = new Pos(4,4);
+		Pos pos2 = new Pos(4,5);
+		Pos pos3 = new Pos(4,6);
+		Pos pos4 = new Pos(4,7);
+		Pos pos5 = new Pos(5,8);
+		Pos pos6 = new Pos(5,9);
+		Pos pos7 = new Pos(5,10);
+		Pos pos8 = new Pos(5,11);
+
+		if(pos.equals(pos1) || pos.equals(pos2) || pos.equals(pos3) || pos.equals(pos4) 
+				||pos.equals(pos5) ||pos.equals(pos6) || pos.equals(pos7) || pos.equals(pos8)){
+			return true;
+		}
+		return false;
+	}
+
 	public void run() {
 		try {
 
@@ -273,6 +290,10 @@ class Car extends Thread {
 				if(atAlleyEnd(curpos)){
 					alley.leave(no);
 				}
+
+				/*if(atBarrier(curpos)){
+					barrier.sync(curpos);
+				}*/
 
 				newpos = nextPos(curpos);
 				try {
@@ -342,11 +363,13 @@ public class CarControl_step3 implements CarControlI{
 	public void barrierOn() { 
 		cd.println("Barrier On not implemented in this version");
 		//TODO implement when Barrier class is ready
+		barrier.on();
 	}
 
 	public void barrierOff() { 
 		cd.println("Barrier Off not implemented in this version");
 		//TODO implement when Barrier class is ready
+		barrier.off();
 	}
 
 	public void barrierShutDown() { 
