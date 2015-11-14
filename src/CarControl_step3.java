@@ -138,11 +138,11 @@ class Barrier {
 		if(count == 0){
 			try{ barrier.P();} catch (InterruptedException e) {}
 			barrier2.V();
-			mutex.V();
-
-			try{ barrier2.P();} catch (InterruptedException e) {}
-			barrier2.V();
 		}
+		mutex.V();
+
+		try{ barrier2.P();} catch (InterruptedException e) {}
+		barrier2.V();
 	}
 
 	public void on() {  }    // Activate barrier
