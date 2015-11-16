@@ -127,27 +127,30 @@ class Barrier {
 
 		try{ mutex.P();} catch (InterruptedException e) {}
 		count ++;
-
 		if(count == cars){
 			try{ barrier2.P();} catch (InterruptedException e) {}
 			barrier.V();
 		}
 		mutex.V();
 
-		if(pos == Car0){
+
+		if(pos.equals(Car0)){
 			try{ PosCar0.P();} catch (InterruptedException e) {}
 		}
 
-		try{ barrier.P();} catch (InterruptedException e) {}
-		barrier.V();
+		if(!pos.equals(Car0)){
+			try{ barrier.P();} catch (InterruptedException e) {}
+			barrier.V();
+		}
 
 		//Critical point
 		try{ mutex.P();} catch (InterruptedException e) {}
 		count --;
 		if(count == 1){
-			try{ barrier.P();} catch (InterruptedException e) {}
 			barrier2.V();
 			PosCar0.V();
+		} else if(count == 0){
+			try{ barrier.P();} catch (InterruptedException e) {}
 		}
 		mutex.V();
 
@@ -159,8 +162,13 @@ class Barrier {
 		barrierOn = true;
 	}    
 
-	public void off() { // Deactivate barrier   
+	public void off() { // Deactivate barrier
 		barrierOn = false;
+		try{ mutex.P();} catch (InterruptedException e) {}
+		if(count != 0){
+			barrier.V();
+		}
+		mutex.V();
 	}   
 
 	public boolean getBarrierOn(){
@@ -382,11 +390,19 @@ public class CarControl_step3 implements CarControlI{
 	}
 
 	public void barrierOn() { 
-		barrier.on();
+		if(barrier.getBarrierOn()){
+			cd.println("Barrier already on");
+		} else{
+			barrier.on();
+		}
 	}
 
 	public void barrierOff() { 
-		barrier.off();
+		if(!barrier.getBarrierOn()){
+			cd.println("Barrier already off");
+		} else{
+			barrier.off();
+		}
 	}
 
 	public void barrierShutDown() { 
