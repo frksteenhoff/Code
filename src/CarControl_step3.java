@@ -34,6 +34,9 @@ class Gate {
 		}
 		e.V();
 	}
+	public boolean getIsOpen(){
+		return isopen;
+	}
 }
 
 
@@ -111,17 +114,19 @@ class Barrier {
 	// Two-phase barrier
 	// Method from The Little Book Of Semaphores, B. Downey, Allan
 
-	Semaphore activeCars = new Semaphore(8);		// Semaphore indicating whether a group of cars can enter the alley.
 	Semaphore mutex = new Semaphore(1);				// Semaphore to prevent concurrent access to critical section
 	Semaphore barrier = new Semaphore(0);			// Turnstile
-	Semaphore barrier2 = new Semaphore(0);			// Turnstile
-	int cars = 8;
+	Semaphore barrier2 = new Semaphore(1);			// Turnstile
+	Semaphore PosCar0 = new Semaphore(0);			// Controlling car no. 0
+	Pos Car0 = new Pos(4,3);						//  
+	int cars = 9;									// No. of cars in all (no distinction between active/inactive cars)
 	int count = 0;
+	boolean barrierOn = false;						// Boolean to check if barrier is on
 
 	public void sync(Pos pos) {    // Wait for others to arrive (if barrier active)
 
 		try{ mutex.P();} catch (InterruptedException e) {}
-		count = count + 1;
+		count ++;
 
 		if(count == cars){
 			try{ barrier2.P();} catch (InterruptedException e) {}
@@ -129,15 +134,20 @@ class Barrier {
 		}
 		mutex.V();
 
+		if(pos == Car0){
+			try{ PosCar0.P();} catch (InterruptedException e) {}
+		}
+
 		try{ barrier.P();} catch (InterruptedException e) {}
 		barrier.V();
 
 		//Critical point
 		try{ mutex.P();} catch (InterruptedException e) {}
-		count = count - 1;
-		if(count == 0){
+		count --;
+		if(count == 1){
 			try{ barrier.P();} catch (InterruptedException e) {}
 			barrier2.V();
+			PosCar0.V();
 		}
 		mutex.V();
 
@@ -145,10 +155,17 @@ class Barrier {
 		barrier2.V();
 	}
 
-	public void on() {  }    // Activate barrier
+	public void on() { // Activate barrier
+		barrierOn = true;
+	}    
 
-	public void off() {  }   // Deactivate barrier 
+	public void off() { // Deactivate barrier   
+		barrierOn = false;
+	}   
 
+	public boolean getBarrierOn(){
+		return barrierOn;
+	}
 }
 
 
@@ -172,12 +189,13 @@ class Car extends Thread {
 	Alley alley;					 // the alley in which the cars pass through
 	Barrier barrier;
 
-	public Car(int no, CarDisplayI cd, Gate g, Semaphore[][] semaphores, Alley alley) {
+	public Car(int no, CarDisplayI cd, Gate g, Semaphore[][] semaphores, Alley alley, Barrier barrier) {
 
 		this.no = no;
 		this.cd = cd;
 		this.semaphores = semaphores;
 		this.alley = alley;
+		this.barrier = barrier;
 		mygate = g;
 		startpos = cd.getStartPos(no);
 		barpos = cd.getBarrierPos(no);  // For later use
@@ -253,6 +271,7 @@ class Car extends Thread {
 	}
 
 	boolean atBarrier(Pos pos){
+		Pos pos0 = new Pos(4,3);
 		Pos pos1 = new Pos(4,4);
 		Pos pos2 = new Pos(4,5);
 		Pos pos3 = new Pos(4,6);
@@ -262,8 +281,8 @@ class Car extends Thread {
 		Pos pos7 = new Pos(5,10);
 		Pos pos8 = new Pos(5,11);
 
-		if(pos.equals(pos1) || pos.equals(pos2) || pos.equals(pos3) || pos.equals(pos4) 
-				||pos.equals(pos5) ||pos.equals(pos6) || pos.equals(pos7) || pos.equals(pos8)){
+		if(pos.equals(pos0) || pos.equals(pos1) || pos.equals(pos2) || pos.equals(pos3) || pos.equals(pos4) 
+				|| pos.equals(pos5) || pos.equals(pos6) || pos.equals(pos7) || pos.equals(pos8)){
 			return true;
 		}
 		return false;
@@ -291,9 +310,11 @@ class Car extends Thread {
 					alley.leave(no);
 				}
 
-				/*if(atBarrier(curpos)){
-					barrier.sync(curpos);
-				}*/
+				if(atBarrier(curpos)){
+					if(barrier.getBarrierOn()){
+						barrier.sync(curpos);
+					}
+				}
 
 				newpos = nextPos(curpos);
 				try {
@@ -347,7 +368,7 @@ public class CarControl_step3 implements CarControlI{
 
 		for (int no = 0; no < 9; no++) {
 			gate[no] = new Gate();
-			car[no] = new Car(no,cd,gate[no],semaphores,alley);
+			car[no] = new Car(no,cd,gate[no],semaphores,alley, barrier);
 			car[no].start();
 		} 
 	}
@@ -361,14 +382,10 @@ public class CarControl_step3 implements CarControlI{
 	}
 
 	public void barrierOn() { 
-		cd.println("Barrier On not implemented in this version");
-		//TODO implement when Barrier class is ready
 		barrier.on();
 	}
 
 	public void barrierOff() { 
-		cd.println("Barrier Off not implemented in this version");
-		//TODO implement when Barrier class is ready
 		barrier.off();
 	}
 
@@ -402,7 +419,6 @@ public class CarControl_step3 implements CarControlI{
 	public void setVariation(int no, int var) { 
 		car[no].setVariation(var);
 	}
-
 }
 
 
