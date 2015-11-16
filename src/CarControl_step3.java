@@ -138,6 +138,7 @@ class Barrier {
 			try{ PosCar0.P();} catch (InterruptedException e) {}
 		}
 
+		// Wait for all cars to arrive at barrier
 		if(!pos.equals(Car0)){
 			try{ barrier.P();} catch (InterruptedException e) {}
 			barrier.V();
@@ -165,7 +166,7 @@ class Barrier {
 	public void off() { // Deactivate barrier
 		barrierOn = false;
 		try{ mutex.P();} catch (InterruptedException e) {}
-		if(count != 0){
+		if(count != 0 && count != 1){
 			barrier.V();
 		}
 		mutex.V();
