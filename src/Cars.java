@@ -883,7 +883,7 @@ public class Cars extends JFrame implements CarDisplayI {
         // Add control
         testwrap = new CarTestWrapper(this);
 
-        ctr = new CarControl_step3(this);
+        ctr = new CarControl_step4(this);
     }
 
     public static void main(String [] args) {
