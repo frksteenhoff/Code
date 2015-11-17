@@ -42,70 +42,62 @@ class Gate {
 
 class Alley{
 
-	Semaphore alleySem = new Semaphore(1);	// Semaphore indicating whether a group of cars can enter the alley.
-	Semaphore check = new Semaphore(1);		// Semaphore to prevent access to critical section
 	Semaphore teamUpSem = new Semaphore(1);	// Semaphore to grant both part of teamUp access to alley	
 	boolean teamUp, teamDown = false;		
 	int noCars = 0;							// Counter to keep track of cars in alley
 
-	public void enter(int no){
+	public synchronized void enter(int no){
 		//Denying access for cars 1-4 (if cars from 5-8 are in the alley)
-		if(no > 4){
+		if(4 < no){ 
 			if(teamDown){
-				try{check.P();} catch (InterruptedException e) {}
 				noCars ++;
-
-			} else{
-				try { 
-					alleySem.P();
-					check.P();} catch (InterruptedException e) {}
-				teamDown = true;
+			}else if(noCars == 0){
 				noCars ++;
+				teamDown = true;					
+			}else{
+				try{ wait();} catch (InterruptedException e) {}
+				teamDown = true;	
+				noCars++;
 			}
-			check.V();
-		}
-
+		} 
 		//Denying access for cars 5-8 (if cars from 1-4 are in the alley)
-		if(no < 5){
+		if(no < 5){ 
 			if(teamUp){
-				try{check.P();} catch (InterruptedException e) {}
 				noCars ++;
-			} else{
-				try { 
-					teamUpSem.P();
-					if(!teamUp){
-						alleySem.P();
-					}
-					check.P();
-				} catch (InterruptedException e) {}
+			}else if(noCars == 0){
+				if(!teamUp){
+					try{ teamUpSem.P();} catch (InterruptedException e) {}
+				}
+				noCars ++;
+				teamUp = true;					
+			}else{
+				try{ teamUpSem.P();} catch (InterruptedException e) {}
+				if(!teamUp){
+					try{ wait();} catch (InterruptedException e) {}
+				}
 				teamUp = true;
-
 				noCars ++;
 				teamUpSem.V();
 			}
-			check.V();
 		}
 	}
 
-	public void leave(int no){
+	public synchronized void leave(int no){
 		// Check which cars is leaving the alley
-		if(no > 4){
-			try{check.P();} catch (InterruptedException e) {}
+		if(4 < no){
 			noCars --;
 			if(noCars == 0){
 				teamDown = false;
-				alleySem.V();
+				notify();
 			}
 
-		}else if(no < 5){
-			try{check.P();} catch (InterruptedException e) {}
+		}else if(no < 5){ 
 			noCars --;
 			if(noCars == 0){
 				teamUp = false;
-				alleySem.V();			
+				notify();
 			}
 		}
-		check.V();
 	}
 }
 
@@ -114,49 +106,31 @@ class Barrier {
 	// Two-phase barrier
 	// Method from The Little Book Of Semaphores, B. Downey, Allan
 
-	Semaphore mutex = new Semaphore(1);				// Semaphore to prevent concurrent access to critical section
-	Semaphore barrier = new Semaphore(0);			// Turnstile
-	Semaphore barrier2 = new Semaphore(1);			// Turnstile
-	Semaphore PosCar0 = new Semaphore(0);			// Controlling car no. 0
-	Pos Car0 = new Pos(4,3);						//  
 	int cars = 9;									// No. of cars in all (no distinction between active/inactive cars)
 	int count = 0;
-	boolean barrierOn = false;						// Boolean to check if barrier is on
+	boolean barrierOn, barrierLock = false;			// Boolean to check if barrier is on
 
-	public void sync(Pos pos) {    // Wait for others to arrive (if barrier active)
+	public synchronized void sync(Pos pos) {    // Wait for others to arrive (if barrier active)
 
-		try{ mutex.P();} catch (InterruptedException e) {}
+		// Release cars when all have reached the barrier
+		while(barrierLock){
+			try{ wait();} catch (InterruptedException e) {}
+		}
 		count ++;
 		if(count == cars){
-			try{ barrier2.P();} catch (InterruptedException e) {}
-			barrier.V();
-		}
-		mutex.V();
-
-
-		if(pos.equals(Car0)){
-			try{ PosCar0.P();} catch (InterruptedException e) {}
+			barrierLock = true;
+			notifyAll();
 		}
 
-		// Wait for all cars to arrive at barrier
-		if(!pos.equals(Car0)){
-			try{ barrier.P();} catch (InterruptedException e) {}
-			barrier.V();
+		// Make cars wait at barrier
+		while(!barrierLock){
+			try{ wait();} catch (InterruptedException e) {}
 		}
-
-		//Critical point
-		try{ mutex.P();} catch (InterruptedException e) {}
-		count --;
-		if(count == 1){
-			barrier2.V();
-			PosCar0.V();
-		} else if(count == 0){
-			try{ barrier.P();} catch (InterruptedException e) {}
+		count --;	
+		if(count == 0){
+			barrierLock = false;
+			notifyAll();
 		}
-		mutex.V();
-
-		try{ barrier2.P();} catch (InterruptedException e) {}
-		barrier2.V();
 	}
 
 	public void on() { // Activate barrier
@@ -165,11 +139,6 @@ class Barrier {
 
 	public void off() { // Deactivate barrier
 		barrierOn = false;
-		try{ mutex.P();} catch (InterruptedException e) {}
-		if(count != 0 && count != 1){
-			barrier.V();
-		}
-		mutex.V();
 	}   
 
 	public boolean getBarrierOn(){
