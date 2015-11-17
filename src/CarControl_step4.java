@@ -80,6 +80,7 @@ class Alley{
 				teamUpSem.V();
 			}
 		}
+		
 	}
 
 	public synchronized void leave(int no){
@@ -88,17 +89,16 @@ class Alley{
 			noCars --;
 			if(noCars == 0){
 				teamDown = false;
-				notify();
 			}
 
 		}else if(no < 5){ 
 			noCars --;
 			if(noCars == 0){
 				teamUp = false;
-				notify();
 			}
 		}
-	}
+		notify();
+	}	
 }
 
 class Barrier {
