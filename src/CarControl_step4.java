@@ -1,5 +1,5 @@
-//Prototype implementation of Car Control
 //Mandatory assignment
+//Prototype implementation of Car Control
 //Course 02158 Concurrent Programming, DTU, Fall 2015
 
 //Hans Henrik Løvengreen    Oct 6,  2015
@@ -104,7 +104,7 @@ class Barrier {
 
 	int cars = 9;									// No. of cars in all (no distinction between active/inactive cars)
 	int count = 0;
-	boolean barrierOn, barrierLock = false;			// Boolean to check if barrier is on
+	boolean barrierOn, barrierLock, shutdownOn = false;			// Boolean to check if barrier is on
 
 	public synchronized void sync(Pos pos) {    // Wait for others to arrive (if barrier active)
 
@@ -136,6 +136,23 @@ class Barrier {
 	public void off() { // Deactivate barrier
 		barrierOn = false;
 	}   
+	
+	public void shutdown() {
+		
+		if(shutdownOn){
+			
+		}else{	
+			barrierOn = false;
+			shutdownOn = false;
+		}
+	}
+	
+	public boolean getShutdownOn(){
+		return shutdownOn;
+	}
+	public void setShutdownOn(boolean bool){
+		shutdownOn = bool;
+	}
 
 	public boolean getBarrierOn(){
 		return barrierOn;
@@ -258,9 +275,11 @@ class Car extends Thread {
 
 		for(int i = 0; i < positions.length; i++){
 			if(pos.equals(positions[i])){
+				barrier.setShutdownOn(true);
 				return true;
 			}
 		}
+		barrier.setShutdownOn(false);
 		return false;
 	}
 
@@ -289,6 +308,8 @@ class Car extends Thread {
 				if(atBarrier(curpos)){
 					if(barrier.getBarrierOn()){
 						barrier.sync(curpos);
+					}else if(barrier.getShutdownOn()){
+						barrier.shutdown();
 					}
 				}
 
@@ -374,7 +395,7 @@ public class CarControl_step4 implements CarControlI{
 	}
 
 	public void barrierShutDown() { 
-		cd.println("Barrier shut down not implemented in this version");
+		barrier.shutdown();
 		// This sleep is for illustrating how blocking affects the GUI
 		// Remove when shutdown is implemented.
 		try { Thread.sleep(3000); } catch (InterruptedException e) { }

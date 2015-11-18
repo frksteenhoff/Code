@@ -133,7 +133,6 @@ class Barrier {
 		}
 		mutex.V();
 
-
 		if(pos.equals(Car0)){
 			try{ PosCar0.P();} catch (InterruptedException e) {}
 		}
@@ -150,11 +149,13 @@ class Barrier {
 		if(count == 1){
 			barrier2.V();
 			PosCar0.V();
+		//Release all cars
 		} else if(count == 0){
 			try{ barrier.P();} catch (InterruptedException e) {}
 		}
 		mutex.V();
-
+		
+		//Reset barrier
 		try{ barrier2.P();} catch (InterruptedException e) {}
 		barrier2.V();
 	}
