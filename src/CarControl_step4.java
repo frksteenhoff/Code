@@ -6,6 +6,7 @@
 
 
 import java.awt.Color;
+import java.sql.Array;
 import java.util.ArrayList;
 import java.util.Arrays;
 
@@ -42,6 +43,7 @@ class Gate {
 
 class Alley{
 
+	Semaphore alleySem = new Semaphore(1);	// Semaphore indicating whether a group of cars can enter the alley.
 	Semaphore teamUpSem = new Semaphore(1);	// Semaphore to grant both part of teamUp access to alley	
 	boolean teamUp, teamDown = false;		
 	int noCars = 0;							// Counter to keep track of cars in alley
@@ -51,11 +53,9 @@ class Alley{
 		if(4 < no){ 
 			if(teamDown){
 				noCars ++;
-			}else if(noCars == 0){
-				noCars ++;
-				teamDown = true;					
+
 			}else{
-				try{ wait();} catch (InterruptedException e) {}
+				try{ alleySem.P();} catch (InterruptedException e) {}
 				teamDown = true;	
 				noCars++;
 			}
@@ -64,40 +64,36 @@ class Alley{
 		if(no < 5){ 
 			if(teamUp){
 				noCars ++;
-			}else if(noCars == 0){
-				if(!teamUp){
-					try{ teamUpSem.P();} catch (InterruptedException e) {}
-				}
-				noCars ++;
-				teamUp = true;					
 			}else{
-				try{ teamUpSem.P();} catch (InterruptedException e) {}
+				try{ teamUpSem.P();
 				if(!teamUp){
-					try{ wait();} catch (InterruptedException e) {}
-				}
+					try {alleySem.P();} catch (InterruptedException e) {}
+				} 
+				} catch (InterruptedException e) {}
 				teamUp = true;
 				noCars ++;
 				teamUpSem.V();
-			}
+			}	
 		}
-		
+
 	}
 
-	public synchronized void leave(int no){
+	public void leave(int no){
 		// Check which cars is leaving the alley
 		if(4 < no){
 			noCars --;
 			if(noCars == 0){
 				teamDown = false;
+				alleySem.V();
 			}
 
 		}else if(no < 5){ 
 			noCars --;
 			if(noCars == 0){
 				teamUp = false;
+				alleySem.V();
 			}
 		}
-		notify();
 	}	
 }
 
@@ -258,10 +254,12 @@ class Car extends Thread {
 		Pos pos6 = new Pos(5,9);
 		Pos pos7 = new Pos(5,10);
 		Pos pos8 = new Pos(5,11);
+		Pos[] positions = {pos0, pos1, pos2, pos3, pos4, pos5, pos6, pos7, pos8};
 
-		if(pos.equals(pos0) || pos.equals(pos1) || pos.equals(pos2) || pos.equals(pos3) || pos.equals(pos4) 
-				|| pos.equals(pos5) || pos.equals(pos6) || pos.equals(pos7) || pos.equals(pos8)){
-			return true;
+		for(int i = 0; i < positions.length; i++){
+			if(pos.equals(positions[i])){
+				return true;
+			}
 		}
 		return false;
 	}

@@ -78,8 +78,8 @@ class Alley{
 					}
 					check.P();
 				} catch (InterruptedException e) {}
+				
 				teamUp = true;
-
 				noCars ++;
 				teamUpSem.V();
 			}
@@ -289,13 +289,16 @@ class Car extends Thread {
 		Pos pos6 = new Pos(5,9);
 		Pos pos7 = new Pos(5,10);
 		Pos pos8 = new Pos(5,11);
+		Pos[] positions = {pos0,pos1,pos2,pos3,pos4,pos5,pos6,pos7,pos8};
 
-		if(pos.equals(pos0) || pos.equals(pos1) || pos.equals(pos2) || pos.equals(pos3) || pos.equals(pos4) 
-				|| pos.equals(pos5) || pos.equals(pos6) || pos.equals(pos7) || pos.equals(pos8)){
-			return true;
+		for(int i = 0; i < positions.length; i++){
+			if(pos.equals(positions[i])){
+				return true;
+			}
 		}
 		return false;
 	}
+
 
 	public void run() {
 		try {
